@@ -14,6 +14,15 @@ class dia_evento:
 		self.data = dados #array com 2 dimensoes - eventcode e horario
 		self.min = minutos
 
+class evento:
+	def __init__(self, evnt, minutos):
+		self.evento = evnt
+		self.min = np.array(minutos)
+	#a ideia é serparar por classes o time de evento de cada eventid.
+	def update_time_array(self, min_add):
+		self.min = np.append(self.min, min_add)
+
+
 def get_min(time_str):
     h, m, s = time_str.split(':')
     return int(h) * 60 + int(m) * 1  #+ int(s)/60
@@ -31,6 +40,7 @@ def main():
 	#pprint(lista_arquivos)
 	p = re.compile("\S+")
 	lista_dias = np.array([])
+	eventos = np.array([])
 	for arquivos in lista_arquivos:
 		if ".csv" in arquivos:
 			with open("/home/apt/Documents/mba/"+arquivos) as csvfile:
@@ -39,31 +49,60 @@ def main():
 				dia = "01/01/0001"
 				dados = np.array([])
 				minutes = np.array([])
-				for linha in lendoarquivo:
-					#aqui eu comeco a processar csv's com logs
-					if dia == p.match(linha[1]).group():
-						#mesmo dia
-						dados = np.append(dados, int(linha[3][1:len(linha[3])-1]))
-						#pprint(linha[1][12:len(linha[1])-1])
-						minutes = np.append(minutes, get_min(linha[1][12:len(linha[1])-1])) #17/11/2017 04:36:02
+				for index, linha in enumerate(lendoarquivo):
+					if index != 0:
+						#aqui eu comeco a processar csv's com logs
+						tem_evnt = False #tratamento para criacao de arrays
+						if dia == p.match(linha[1]).group():
+							#mesmo dia
+							dados = np.append(dados, int(linha[3][1:len(linha[3])-1]))
+							#pprint(linha[1][12:len(linha[1])-1])
+							minutes = np.append(minutes, get_min(linha[1][12:len(linha[1])-1])) #17/11/2017 04:36:02
+							#separando por evento também para que se gere outra inteligencia
+							for idx,evnt in enumerate(eventos):
+								try:
+									if evnt.evento == int(linha[3][1:len(linha[3])-1]):
+										eventos[idx] = evnt.update_time_array(get_min(linha[1][12:len(linha[1])-1]))
+										tem_evnt = True
+								except:
+									pass #sem tempo para analisar isso agora	
+							if tem_evnt == False:
+								eventos = np.append(eventos, evento(int(linha[3][1:len(linha[3])-1]), get_min(linha[1][12:len(linha[1])-1])))
+						else:
+							# lista de dias tudo junto
+							lista_dias = np.append(lista_dias, dia_evento(dia, dados, minutes))
+							dia = p.match(linha[1]).group()
+							dados = np.array([int(linha[3][1:len(linha[3])-1])])
+							minutes = np.array([get_min(linha[1][12:len(linha[1])-1])])
+							# lista por eventos separado
+							for idx,evnt in enumerate(eventos):
+								try:
+									if evnt.evento == int(linha[3][1:len(linha[3])-1]):
+										eventos[idx] = evnt.update_time_array(get_min(linha[1][12:len(linha[1])-1]))
+										tem_evnt = True
+								except:
+									pass
+							if tem_evnt == False:
+								eventos = np.append(eventos, evento(int(linha[3][1:len(linha[3])-1]), get_min(linha[1][12:len(linha[1])-1])))
 					else:
-						lista_dias = np.append(lista_dias, dia_evento(dia, dados, minutes))
-						dia = p.match(linha[1]).group()
-						dados = np.array([])
-						minutes = np.array([])
+						pass
 	#aqui já separei meus dados e posso começar a analisar os arquivos
 	#pprint(lista_dias)
 	pprint("Fim de configuração dos dos dados...")
-	consolidados = np.matrix('')
+	#consolidados = np.matrix('')
+	consolidados = np.empty([2,1], dtype=int)
+	#quero poder ver todos os eventos junto para facilidade de visualização
 	for dias in lista_dias:
-		consolidados = np.append(consolidados, [dias.data, dias.min])
-	#plotaremos um grafico para entendermos os dados.
-	plt.scatter(consolidados, consolidados, color='green')
+			#Aqui temos todos os eventos Windows Consolidados em só gráfico.
+			consolidados = np.concatenate((consolidados, np.matrix([dias.data, dias.min])), axis=1)
+	#plotaremos um grafico para entendermos os dados.S
+	#pprint(consolidados[0, 1:])#teste para saber se array está funcionando
+	plt.scatter(np.array(consolidados[1 , 1:]), np.array(consolidados[0 , 1:]), color='green')
 	plt.title("Eventos/minutos(dia)")
 	plt.xlabel("minutos")
 	plt.ylabel("eventos")
 	plt.show()
-	eventos = dados[ np.where( dados == 4688) ] # isso aqui funciona/preciso separar os eventos apenas.
+	#olhando para apenas um evento, exemplo 4624
 	
 
 main()
