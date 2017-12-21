@@ -6,6 +6,8 @@ import re
 import numpy as np
 # pprint library is used to make the output look more pretty
 from pprint import pprint
+import pickle # serialização de objetos
+from sklearn import svm
 
 #classe definindo dia básico de logs da máquina
 class dia_evento:
@@ -26,6 +28,16 @@ class evento:
 def get_min(time_str):
     h, m, s = time_str.split(':')
     return int(h) * 60 + int(m) * 1  #+ int(s)/60
+
+def save_to_file(objeto, nome_arquivo):
+	with open(nome_arquivo, 'wb') as output:
+		pickle.dump(objeto, output, pickle.HIGHEST_PROTOCOL)
+
+def load_file(nome_arquivo):
+	with open(nome_arquivo, 'rb') as input:
+		objeto = pickle.load(input)
+	return objeto
+
 
 def main():
 	# connect to MongoDB, change the << MONGODB URL >> to reflect your own connection string
@@ -101,8 +113,15 @@ def main():
 	plt.title("Eventos/minutos(dia)")
 	plt.xlabel("minutos")
 	plt.ylabel("eventos")
-	plt.show()
 	#olhando para apenas um evento, exemplo 4624
-	
+	pprint("Eventos detectados neste computador:")
+	for evnt in eventos:
+		try:
+			pprint("-> "+evnt.evento)
+			#plt.scatter(evnt.min, evnt.evento)
+		except:
+			pass
+	plt.show()
+	save_to_file(eventos, "eventos.pkl") #salvando todos eventos consolidados
 
 main()
