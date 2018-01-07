@@ -1,4 +1,5 @@
 #https://eventlogxp.com/blog/exporting-event-logs-with-windows-powershell/
+#Esse arquivo é responsável por me trazer logs que eu quero do Windows Automaticamente sem que eu tenha que ir ao Event Viewer
 $now=get-date
 $startdate=$now.adddays(-30)
 $name = hostname
