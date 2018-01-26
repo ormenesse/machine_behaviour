@@ -1,13 +1,17 @@
 from pymongo import MongoClient
 from matplotlib import pyplot as plt
+import sys
 import csv
 import os
 import re
 import numpy as np
 # pprint library is used to make the output look more pretty
 from pprint import pprint
-import pickle # serialização de objetos
+import pickle # serializacao de objetos
 from sklearn import svm
+from sklearn.covariance import EllipticEnvelope
+from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
 
 #classe definindo dia básico de logs da máquina
 class dia_evento:
@@ -27,7 +31,8 @@ class evento:
 
 def get_min(time_str):
     h, m, s = time_str.split(':')
-    return int(h) * 60 + int(m) * 1  #+ int(s)/60
+    minuto = int(h) * 60 + int(m) * 1  #+ int(s)/60
+    return minuto
 
 def save_to_file(objeto, nome_arquivo):
 	with open(nome_arquivo, 'wb') as output:
@@ -71,12 +76,18 @@ def main():
 							#pprint(linha[1][12:len(linha[1])-1])
 							minutes = np.append(minutes, get_min(linha[1][12:len(linha[1])-1])) #17/11/2017 04:36:02
 							#separando por evento também para que se gere outra inteligencia
+							tem_evnt = False
 							for idx,evnt in enumerate(eventos):
 								try:
-									if evnt.evento == int(linha[3][1:len(linha[3])-1]):
-										eventos[idx] = evnt.update_time_array(get_min(linha[1][12:len(linha[1])-1]))
+									#checando para ver se o evento existe
+									#pprint("Esse é igual " + str(eventos[idx].evento) +" a esse" + str(int(linha[3][1:len(linha[3])-1]))
+									if eventos[idx].evento == int(linha[3][1:len(linha[3])-1]):
+										minuto = get_min(linha[1][12:len(linha[1])-1])
+										#pprint(minuto)
+										evnt.update_time_array(minuto)
 										tem_evnt = True
 								except:
+									pprint("Erro ao criar classes de eventos")
 									pass #sem tempo para analisar isso agora	
 							if tem_evnt == False:
 								eventos = np.append(eventos, evento(int(linha[3][1:len(linha[3])-1]), get_min(linha[1][12:len(linha[1])-1])))
@@ -90,10 +101,11 @@ def main():
 							for idx,evnt in enumerate(eventos):
 								try:
 									if evnt.evento == int(linha[3][1:len(linha[3])-1]):
-										eventos[idx] = evnt.update_time_array(get_min(linha[1][12:len(linha[1])-1]))
+										minuto = get_min(linha[1][12:len(linha[1])-1])
+										evnt.update_time_array(minuto)
 										tem_evnt = True
 								except:
-									pass
+									pass #método a ser implementado
 							if tem_evnt == False:
 								eventos = np.append(eventos, evento(int(linha[3][1:len(linha[3])-1]), get_min(linha[1][12:len(linha[1])-1])))
 					else:
@@ -115,13 +127,39 @@ def main():
 	plt.ylabel("eventos")
 	#olhando para apenas um evento, exemplo 4624
 	pprint("Eventos detectados neste computador:")
-	for evnt in eventos:
+	for evnt in enumerate(eventos):
 		try:
 			pprint("-> "+evnt.evento)
 			#plt.scatter(evnt.min, evnt.evento)
 		except:
 			pass
-	plt.show()
+	#plt.show() #cansei de ver o plot
 	save_to_file(eventos, "eventos.pkl") #salvando todos eventos consolidados
+	#configurando classificadores
+	outliers_fraction = 0.25
+	classificadores = {
+    	"One-Class SVM": svm.OneClassSVM(nu=0.95 * outliers_fraction + 0.05,kernel="rbf", gamma=0.1),
+    	"Robust covariance": EllipticEnvelope(contamination=outliers_fraction),
+    	"Isolation Forest": IsolationForest(max_samples=enumerate(eventos),contamination=outliers_fraction),
+    	"Local Outlier Factor": LocalOutlierFactor(n_neighbors=35,contamination=outliers_fraction)
+	}
+	#classificando eventos.
+	for idx,evnt in enumerate(eventos):
+		pprint("Criando Modelos para o evento: " + str(evnt.evento))
+		for i, (clf_name, clf) in enumerate(classificadores.items()):
+			pprint("Modelo " + clf_name)
+			# dados e outliers. Estou fazendo deteccao por outlier
+			if clf_name == "Local Outlier Factor":
+				y_pred = clf.fit_predict(evnt.min/np.amax(evnt.min))
+				scores_pred = clf.negative_outlier_factor_
+				pprint(clf_name + " " + idx + " " + scores_pred)
+			else:
+				clf.fit(evnt.min/np.amax(evnt.min))
+				scores_pred = clf.decision_function(evnt.min/np.amax(evnt.min))
+				pprint(clf_name + " " + idx + " " + scores_pred)
+				y_pred = clf.predict(evnt.min/np.amax(evnt.min))
+			threshold = stats.scoreatpercentile(scores_pred,100 * outliers_fraction)
+			n_errors = (y_pred != ground_truth).sum()
+
 
 main()
