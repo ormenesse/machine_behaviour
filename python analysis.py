@@ -53,14 +53,14 @@ def main():
 	#serverStatusResult=db.command("serverStatus")
 	# pprint(serverStatusResult)
 	# Lendo CSV's com log's necessários.
-	lista_arquivos = os.listdir("/home/apt/Documents/mba")
+	lista_arquivos = os.listdir("./mba")
 	#pprint(lista_arquivos)
 	p = re.compile("\S+")
 	lista_dias = np.array([])
 	eventos = np.array([])
 	for arquivos in lista_arquivos:
 		if ".csv" in arquivos:
-			with open("/home/apt/Documents/mba/"+arquivos) as csvfile:
+			with open("./mba/"+arquivos) as csvfile:
 				#a ideia original é fazermos uma relevancia de eventos por dia e tetantar encontrar alguma disparidade ou algum problema com isso. Se não der certo, tentamos com outra coisa.
 				lendoarquivo = csv.reader(csvfile, delimiter=",", quotechar="|")
 				dia = "01/01/0001"
@@ -150,14 +150,17 @@ def main():
 			pprint("Modelo " + clf_name)
 			# dados e outliers. Estou fazendo deteccao por outlier
 			if clf_name == "Local Outlier Factor":
-				y_pred = clf.fit_predict(evnt.min/np.amax(evnt.min))
+				qntd = evnt.min.size
+				y_pred = clf.fit_predict(np.vstack((evnt.min, np.ones(qntd)),axis=1))
 				scores_pred = clf.negative_outlier_factor_
 				pprint(clf_name + " " + idx + " " + scores_pred)
 			else:
-				clf.fit(evnt.min/np.amax(evnt.min))
-				scores_pred = clf.decision_function(evnt.min/np.amax(evnt.min))
+				#https://stackoverflow.com/questions/35401041/concatenation-of-2-1d-numpy-arrays-along-2nd-axis
+				qntd = evnt.min.size
+				clf.fit(np.vstack((evnt.min, np.ones(qntd))))#clf.fit(evnt.min/np.amax(evnt.min))
+				scores_pred = clf.decision_function(np.vstack((evnt.min, np.ones(qntd))))#evnt.min/np.amax(evnt.min))
 				pprint(clf_name + " " + idx + " " + scores_pred)
-				y_pred = clf.predict(evnt.min/np.amax(evnt.min))
+				y_pred = clf.predict(np.vstack((evnt.min, np.ones(qntd))))
 			threshold = stats.scoreatpercentile(scores_pred,100 * outliers_fraction)
 			n_errors = (y_pred != ground_truth).sum()
 
