@@ -12,6 +12,7 @@ from sklearn import svm
 from sklearn.covariance import EllipticEnvelope
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
+from scipy import stats
 
 #classe definindo dia básico de logs da máquina
 class dia_evento:
@@ -140,7 +141,7 @@ def main():
 	classificadores = {
     	"One-Class SVM": svm.OneClassSVM(nu=0.95 * outliers_fraction + 0.05,kernel="rbf", gamma=0.1),
     	"Robust covariance": EllipticEnvelope(contamination=outliers_fraction),
-    	"Isolation Forest": IsolationForest(max_samples=enumerate(eventos),contamination=outliers_fraction),
+    	#"Isolation Forest": IsolationForest(max_samples=enumerate(eventos),contamination=outliers_fraction),
     	"Local Outlier Factor": LocalOutlierFactor(n_neighbors=35,contamination=outliers_fraction)
 	}
 	#classificando eventos.
@@ -151,18 +152,21 @@ def main():
 			# dados e outliers. Estou fazendo deteccao por outlier
 			if clf_name == "Local Outlier Factor":
 				qntd = evnt.min.size
-				y_pred = clf.fit_predict(np.vstack((evnt.min, np.ones(qntd)),axis=1))
+				y_pred = clf.fit_predict(np.vstack((evnt.min, np.ones(qntd))))
 				scores_pred = clf.negative_outlier_factor_
-				pprint(clf_name + " " + idx + " " + scores_pred)
+				pprint("%s %d" % (clf_name, evnt.evento))
+				print(scores_pred)
 			else:
-				#https://stackoverflow.com/questions/35401041/concatenation-of-2-1d-numpy-arrays-along-2nd-axis
 				qntd = evnt.min.size
+				#https://stackoverflow.com/questions/35401041/concatenation-of-2-1d-numpy-arrays-along-2nd-axis
 				clf.fit(np.vstack((evnt.min, np.ones(qntd))))#clf.fit(evnt.min/np.amax(evnt.min))
 				scores_pred = clf.decision_function(np.vstack((evnt.min, np.ones(qntd))))#evnt.min/np.amax(evnt.min))
-				pprint(clf_name + " " + idx + " " + scores_pred)
-				y_pred = clf.predict(np.vstack((evnt.min, np.ones(qntd))))
-			threshold = stats.scoreatpercentile(scores_pred,100 * outliers_fraction)
-			n_errors = (y_pred != ground_truth).sum()
+				pprint("%s %d" % (clf_name, evnt.evento))
+				save_to_file(eventos, "modelo_"+evnt.evento+".pkl") #salvando todos eventos consolidados
+				#print(scores_pred)
+				#y_pred = clf.predict(np.vstack((evnt.min, np.ones(qntd))))
+			#threshold = stats.scoreatpercentile(scores_pred,100 * outliers_fraction)
+			#n_errors = (y_pred != ground_truth).sum()
 
 
 main()
