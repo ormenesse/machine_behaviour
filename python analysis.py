@@ -162,7 +162,7 @@ def main():
 				clf.fit(np.vstack((evnt.min, np.ones(qntd))))#clf.fit(evnt.min/np.amax(evnt.min))
 				scores_pred = clf.decision_function(np.vstack((evnt.min, np.ones(qntd))))#evnt.min/np.amax(evnt.min))
 				pprint("%s %d" % (clf_name, evnt.evento))
-				save_to_file(eventos, "modelo_"+evnt.evento+".pkl") #salvando todos eventos consolidados
+				save_to_file(eventos, "modelo_"+str(evnt.evento)+".pkl") #salvando todos eventos consolidados
 				#print(scores_pred)
 				#y_pred = clf.predict(np.vstack((evnt.min, np.ones(qntd))))
 			#threshold = stats.scoreatpercentile(scores_pred,100 * outliers_fraction)
